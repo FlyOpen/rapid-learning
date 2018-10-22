@@ -1,0 +1,43 @@
+version: '3'
+services:
+  webapp:
+    env_file: .env
+    restart: unless-stopped
+    build:
+      context: ./web
+      args:
+        - PHP_VERSION=${PHP_VERSION}
+        - COMPOSER_HASH=${COMPOSER_HASH}
+        - ALPINE_VERSION=${ALPINE_VERSION}
+        - NGINX_HTTP_PORT=${NGINX_HTTP_PORT}
+        - NGINX_HTTPS_PORT=${NGINX_HTTPS_PORT}
+    ports:
+      - '8888:80'
+    volumes:
+      - ./../src:/var/www
+      - ./logs/web:/var/www/storage/logs
+    links:
+      - redis
+      - mysql
+      - maildev
+    depends_on:
+      - redis
+      - mysql
+      - maildev
+  redis:
+    build: ./databases/redis
+    restart: unless-stopped
+    volumes:
+      - ./storage/redis:/data
+      - ./databases/redis/redis.conf:/usr/local/etc/redis/redis.conf
+  mysql:
+    env_file: .env
+    image: mysql:5.7
+    command: "--innodb_use_native_aio=0"
+    volumes:
+      - ./logs/mysql:/var/log/mysql
+      - ./storage/mysql:/var/lib/mysql
+    ports:
+      - '3306:3306'
+  maildev:
+    image: djfarrelly/maildev:latest
